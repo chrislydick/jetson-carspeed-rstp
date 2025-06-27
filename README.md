@@ -1,52 +1,55 @@
-# Jetson Car Speed RTSP
+# Jetson Car Speed DeepStream
 
-This repository contains a simple example for detecting vehicles from an RTSP stream and logging their estimated speed to a SQLite database. It is intended for NVIDIA Jetson devices but should run on any Linux system with Python.
+This repository demonstrates a DeepStream pipeline for measuring vehicle speed from RTSP streams or local H.265 MP4 files. A custom GStreamer plug-in reads tracker metadata and logs speed estimates to a SQLite database.
 
 ## Prerequisites
 
+* NVIDIA DeepStream SDK 6 or newer with GStreamer
 * Python 3.8+
-* [OpenCV](https://pypi.org/project/opencv-python/)
-* [Ultralytics YOLO](https://github.com/ultralytics/ultralytics)
+* GObject introspection bindings (PyGObject)
+* SQLite development libraries for building the plug-in
 
-Install dependencies with:
+## Building the speed plug-in
 
-```bash
-pip install opencv-python ultralytics
-```
-
-Download a YOLO model (e.g., `yolov8n.pt`) from the Ultralytics project or train your own.
-
-## Usage
-
-Run the RTSP example and pass your stream URL, YOLO model path, the desired output database path, and the pixel-per-meter (PPM) scale for your camera setup:
+Compile `speed_plugin.c` into a shared object and place it in a location searched by GStreamer:
 
 ```bash
-python carspeed.py --rtsp rtsp://camera/stream --model yolov8n.pt --db vehicles.db --ppm 20
+gcc -Wall -fPIC -shared speed_plugin.c -o libspeedtrack.so \
+  $(pkg-config --cflags --libs gstreamer-1.0 gstreamer-base-1.0) \
+  -lnvds_meta -lsqlite3
+export GST_PLUGIN_PATH=$PWD:$GST_PLUGIN_PATH
 ```
 
-The script will connect to the RTSP stream, detect vehicles in each frame, estimate their speed based on tracked pixel movement, and write the results to an SQLite database called `vehicles.db` by default.
+## Running the pipeline
 
-### Testing with an H.265 MP4 file
+The `deepstream_speed.py` helper builds a simple pipeline using hardware decode, `nvinfer`, `nvtracker`, and the custom `speedtrack` element.
 
-You can also run the speed detection against a local MP4 file encoded with UniFi's H.265 format. Use the `carspeed_file.py` helper:
+### RTSP example
 
 ```bash
-python carspeed_file.py --video example.mp4 --model yolov8n.pt --db test.db --ppm 20
+python deepstream_speed.py --rtsp rtsp://camera/stream \
+  --config ds_config.txt --db vehicles.db --ppm 20
 ```
 
-Make sure your OpenCV build has H.265 support through FFmpeg so the file can be decoded correctly.
+### H.265 MP4 example
 
-The PPM value represents how many pixels correspond to one meter in the scene and must be measured for your specific camera angle.
+```bash
+python deepstream_speed.py --video sample.mp4 \
+  --config ds_config.txt --db test.db --ppm 20
+```
+
+`--ppm` is the pixel-per-meter scale for your camera view. Speeds are written to the SQLite database specified with `--db`.
+
+## nvinfer configuration
+
+`ds_config.txt` is a minimal configuration for an INT8 TensorRT-optimized YOLOv8l engine. Replace `model-engine-file` with your preferred engine if needed.
 
 ## Database schema
 
-The `vehicles` table contains:
+The plug-in writes rows to the `vehicles` table containing:
 
-- `timestamp`: capture time in seconds
-- `track_id`: ID assigned to a tracked vehicle
-- `label`: predicted object class
-- `speed`: estimated speed in meters per second
-- `x1`, `y1`, `x2`, `y2`: bounding box coordinates
-- `confidence`: YOLO confidence score
+- `timestamp` – capture time in seconds
+- `track_id` – object tracking ID
+- `speed` – estimated speed in meters per second
 
-You can query this SQLite database from other programs to analyze vehicle speeds and counts.
+Use standard SQLite tools to analyse the results.
