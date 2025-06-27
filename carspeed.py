@@ -7,7 +7,7 @@ from speed_detector import run_capture
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="RTSP vehicle speed detector")
     parser.add_argument("--rtsp", required=True, help="RTSP stream URL")
-    parser.add_argument("--model", required=True, help="Path to YOLO model")
+    parser.add_argument("--model", default="yolov8l.pt", help="Path to YOLO model")
     parser.add_argument("--db", default="vehicles.db", help="Output SQLite DB path")
     parser.add_argument("--ppm", type=float, required=True, help="Pixels per meter scale")
     parser.add_argument("--max-distance", type=float, default=50, help="Max pixel distance for tracking")

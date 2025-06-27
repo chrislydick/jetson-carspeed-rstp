@@ -14,15 +14,16 @@ Install dependencies with:
 pip install opencv-python ultralytics
 ```
 
-Download a YOLO model (e.g., `yolov8n.pt`) from the Ultralytics project or train your own.
+Download a YOLO model (for example `yolov8l.pt` for better accuracy on Jetson AGX devices) from the Ultralytics project or train your own.
 
 ## Usage
 
 Run the RTSP example and pass your stream URL, YOLO model path, the desired output database path, and the pixel-per-meter (PPM) scale for your camera setup:
 
 ```bash
-python carspeed.py --rtsp rtsp://camera/stream --model yolov8n.pt --db vehicles.db --ppm 20
+python carspeed.py --rtsp rtsp://camera/stream --model yolov8l.pt --db vehicles.db --ppm 20
 ```
+If `--model` is omitted, the script defaults to using `yolov8l.pt`.
 
 The script will connect to the RTSP stream, detect vehicles in each frame, estimate their speed based on tracked pixel movement, and write the results to an SQLite database called `vehicles.db` by default.
 
@@ -31,8 +32,9 @@ The script will connect to the RTSP stream, detect vehicles in each frame, estim
 You can also run the speed detection against a local MP4 file encoded with UniFi's H.265 format. Use the `carspeed_file.py` helper:
 
 ```bash
-python carspeed_file.py --video example.mp4 --model yolov8n.pt --db test.db --ppm 20
+python carspeed_file.py --video example.mp4 --model yolov8l.pt --db test.db --ppm 20
 ```
+Like the RTSP example, omitting `--model` will automatically load `yolov8l.pt`.
 
 Make sure your OpenCV build has H.265 support through FFmpeg so the file can be decoded correctly.
 
