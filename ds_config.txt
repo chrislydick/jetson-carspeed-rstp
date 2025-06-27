@@ -1,0 +1,10 @@
+# Minimal nvinfer config for YOLOv8l model
+[property]
+model-engine-file=yolov8l.trt
+batch-size=1
+network-mode=0
+num-detected-classes=1
+interval=0
+
+[class-attrs-all]
+pre-cluster-threshold=0.25
