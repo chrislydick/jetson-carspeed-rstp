@@ -78,6 +78,19 @@ The plug-in writes rows to the `vehicles` table containing:
 
 Use standard SQLite tools to analyse the results.
 
+## Standalone Python tracker
+
+The helper scripts `carspeed.py` and `carspeed_file.py` provide a lightweight
+pipeline using a simple ByteTrack implementation. The tracker behaviour can be
+configured with:
+
+* `--iou-threshold` – IoU required to associate a detection with an existing
+  track (default `0.3`).
+* `--decay-time` – time in seconds to keep a track alive when detections are
+  missing (default `1.0`).
+
+These scripts are useful for quick experiments without a full DeepStream setup.
+
 ## Development
 
 Run the unit tests with `pytest -q`:
