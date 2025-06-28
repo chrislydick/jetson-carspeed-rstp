@@ -28,7 +28,8 @@ The `deepstream_speed.py` helper builds a simple pipeline using hardware decode,
 
 ```bash
 python deepstream_speed.py --rtsp rtsp://camera/stream \
-  --config ds_config.txt --db vehicles.db --ppm 20
+  --config ds_config.txt --db vehicles.db --ppm 20 \
+  --batch-size 4 --resize 1920x1080
 ```
 
 ### H.265 MP4 example
@@ -43,6 +44,8 @@ Use `--homography` to load a 3×3 matrix from a JSON or YAML file if coordinates
 need to be mapped before speed calculation.
 `--window` controls how many observations are used to smooth the speed
 measurement.
+`--batch-size` sets the number of streams processed together by `nvstreammux` and
+`--resize` allows specifying the processing resolution as `WIDTHxHEIGHT`.
 
 ## Calibrating the homography
 
