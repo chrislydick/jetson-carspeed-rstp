@@ -43,6 +43,8 @@ Use `--homography` to load a 3×3 matrix from a JSON or YAML file if coordinates
 need to be mapped before speed calculation.
 `--window` controls how many observations are used to smooth the speed
 measurement.
+`--batch-size` sets the number of streams processed together by `nvstreammux` and
+`--resize` allows specifying the processing resolution as `WIDTHxHEIGHT`.
 
 ## Calibrating the homography
 

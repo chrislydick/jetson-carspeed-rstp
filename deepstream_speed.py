@@ -39,6 +39,9 @@ def build_pipeline(
     is_rtsp: bool,
     homography=None,
     window: int = 3,
+    batch_size: int = 1,
+    width: int = 1280,
+    height: int = 720,
 ) -> Gst.Pipeline:
     if is_rtsp:
         src = f"rtspsrc location={uri} latency=100 ! rtph265depay ! h265parse ! nvv4l2decoder"
@@ -51,8 +54,9 @@ def build_pipeline(
         else ""
     )
     pipe_desc = (
-        f"{src} ! nvstreammux name=mux batch-size=1 width=1280 height=720 ! "
-        f"nvinfer config-file-path={config} model-engine-file={engine} ! nvtracker ! "
+        f"{src} ! nvstreammux name=mux batch-size={batch_size} "
+        f"width={width} height={height} nvbuf-memory-type=0 ! "
+        f"nvinfer config-file-path={config} ! nvtracker ! "
         f"speedtrack ppm={ppm} db={db} window={window}{homography_str} ! "
         f"fakesink sync=false"
     )
@@ -70,12 +74,21 @@ def main() -> None:
     parser.add_argument("--ppm", type=float, required=True, help="Pixels per meter")
     parser.add_argument("--homography", help="Path to 3x3 homography JSON/YAML")
     parser.add_argument("--window", type=int, default=3, help="History window size")
+    parser.add_argument("--batch-size", type=int, default=1, help="nvstreammux batch size")
+    parser.add_argument("--resize", help="Resize as WIDTHxHEIGHT for nvstreammux")
     args = parser.parse_args()
     if not args.engine.endswith(".trt"):
         parser.error("--engine must specify a .trt file")
 
     uri = args.rtsp if args.rtsp else args.video
     H = load_homography(args.homography) if args.homography else None
+    width, height = 1280, 720
+    if args.resize:
+        if "x" not in args.resize:
+            raise ValueError("--resize must be WIDTHxHEIGHT")
+        w, h = args.resize.split("x", 1)
+        width, height = int(w), int(h)
+
     pipeline = build_pipeline(
         uri,
         args.config,
@@ -85,6 +98,9 @@ def main() -> None:
         args.rtsp is not None,
         H,
         args.window,
+        args.batch_size,
+        width,
+        height,
     )
     bus = pipeline.get_bus()
     pipeline.set_state(Gst.State.PLAYING)
