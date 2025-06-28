@@ -33,6 +33,7 @@ def load_homography(path: str):
 def build_pipeline(
     uri: str,
     config: str,
+    engine: str,
     db: str,
     ppm: float,
     is_rtsp: bool,
@@ -68,6 +69,7 @@ def main() -> None:
     src_group.add_argument("--rtsp", help="RTSP stream URL")
     src_group.add_argument("--video", help="Path to H.265 MP4 file")
     parser.add_argument("--config", default="ds_config.txt", help="nvinfer config file")
+    parser.add_argument("--engine", default="trafficcamnet.trt", help="TensorRT engine (.trt)")
     parser.add_argument("--db", default="vehicles.db", help="SQLite DB path")
     parser.add_argument("--ppm", type=float, required=True, help="Pixels per meter")
     parser.add_argument("--homography", help="Path to 3x3 homography JSON/YAML")
@@ -75,6 +77,8 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=1, help="nvstreammux batch size")
     parser.add_argument("--resize", help="Resize as WIDTHxHEIGHT for nvstreammux")
     args = parser.parse_args()
+    if not args.engine.endswith(".trt"):
+        parser.error("--engine must specify a .trt file")
 
     uri = args.rtsp if args.rtsp else args.video
     H = load_homography(args.homography) if args.homography else None
@@ -88,6 +92,7 @@ def main() -> None:
     pipeline = build_pipeline(
         uri,
         args.config,
+        args.engine,
         args.db,
         args.ppm,
         args.rtsp is not None,

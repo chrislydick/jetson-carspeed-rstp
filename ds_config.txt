@@ -1,6 +1,6 @@
-# Minimal nvinfer config for YOLOv8l model
+# Minimal nvinfer config for the default TrafficCamNet engine
 [property]
-model-engine-file=yolov8l.trt
+model-engine-file=trafficcamnet.trt
 batch-size=1
 network-mode=0
 num-detected-classes=1
