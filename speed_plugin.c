@@ -79,6 +79,7 @@ typedef struct {
   GHashTable *history; /* key: guint64 track id, value: History* */
   gdouble H[9];
   gboolean have_h;
+  GString *sql_batch;
 } GstSpeed;
 
 G_DEFINE_TYPE(GstSpeed, gst_speed, GST_TYPE_BASE_TRANSFORM);
@@ -157,6 +158,8 @@ static void gst_speed_finalize(GObject *obj) {
   g_free(speed->db_path);
   if (speed->history)
     g_hash_table_unref(speed->history);
+  if (speed->sql_batch)
+    g_string_free(speed->sql_batch, TRUE);
   G_OBJECT_CLASS(gst_speed_parent_class)->finalize(obj);
 }
 
@@ -169,6 +172,7 @@ static gboolean gst_speed_start(GstBaseTransform *trans) {
     sqlite3_exec(speed->db,
                  "CREATE TABLE IF NOT EXISTS vehicles (timestamp REAL, track_id INTEGER, speed REAL);",
                  NULL, NULL, NULL);
+    speed->sql_batch = g_string_new(NULL);
   }
   speed->history = g_hash_table_new_full(g_int64_hash, g_int64_equal, NULL,
                                          history_free);
@@ -183,6 +187,7 @@ static GstFlowReturn gst_speed_transform_ip(GstBaseTransform *trans, GstBuffer *
   for (NvDsMetaList *l = batch->frame_meta_list; l; l = l->next) {
     NvDsFrameMeta *frame = (NvDsFrameMeta *)l->data;
     gdouble ts = frame->ntp_timestamp / 1e9;
+    g_string_truncate(speed->sql_batch, 0);
     for (NvDsMetaList *o = frame->obj_meta_list; o; o = o->next) {
       NvDsObjectMeta *obj = (NvDsObjectMeta *)o->data;
       guint64 tid = obj->object_id;
@@ -206,10 +211,12 @@ static GstFlowReturn gst_speed_transform_ip(GstBaseTransform *trans, GstBuffer *
       gdouble spd = history_speed(hist, speed->ppm);
       if (spd > 0) {
         char *sql = sqlite3_mprintf("INSERT INTO vehicles(timestamp, track_id, speed) VALUES(%f,%llu,%f);", ts, (unsigned long long)tid, spd);
-        sqlite3_exec(speed->db, sql, NULL, NULL, NULL);
+        g_string_append(speed->sql_batch, sql);
         sqlite3_free(sql);
       }
     }
+    if (speed->sql_batch->len > 0)
+      sqlite3_exec(speed->db, speed->sql_batch->str, NULL, NULL, NULL);
   }
   return GST_FLOW_OK;
 }
@@ -242,6 +249,7 @@ static void gst_speed_init(GstSpeed *speed) {
   speed->have_h = FALSE;
   speed->window = 3;
   speed->history = NULL;
+  speed->sql_batch = NULL;
   for (int i = 0; i < 9; i++)
     speed->H[i] = (i % 4 == 0) ? 1.0 : 0.0; /* identity */
 }
