@@ -24,19 +24,20 @@ export GST_PLUGIN_PATH=$PWD:$GST_PLUGIN_PATH
 
 ## Running the pipeline
 
-The `deepstream_speed.py` helper builds a simple pipeline using hardware decode, `nvinfer`, `nvtracker`, and the custom `speedtrack` element.
+Use the small `carspeed` package to build and run a DeepStream pipeline. The legacy
+`deepstream_speed.py` script simply wraps the package's CLI for convenience.
 
 ### RTSP example
 
 ```bash
-python deepstream_speed.py --rtsp rtsp://camera/stream \
+python -m carspeed.cli --rtsp rtsp://camera/stream \
   --config ds_config.txt --db vehicles.db --ppm 20
 ```
 
 ### H.265 MP4 example
 
 ```bash
-python deepstream_speed.py --video sample.mp4 \
+python -m carspeed.cli --video sample.mp4 \
   --config ds_config.txt --db test.db --ppm 20
 ```
 

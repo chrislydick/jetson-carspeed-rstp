@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Minimal nvinfer config for YOLOv8l model
 [property]
 model-engine-file=yolov8l.trt

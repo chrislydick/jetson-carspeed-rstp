@@ -1,3 +1,4 @@
+/* -*- coding: utf-8 -*- */
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
 #include <nvds_meta.h>
