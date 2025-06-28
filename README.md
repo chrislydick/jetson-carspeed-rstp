@@ -28,14 +28,14 @@ The `deepstream_speed.py` helper builds a simple pipeline using hardware decode,
 
 ```bash
 python deepstream_speed.py --rtsp rtsp://camera/stream \
-  --config ds_config.txt --db vehicles.db --ppm 20
+  --config ds_config.txt --db vehicles.db --ppm 20 --engine trafficcamnet.trt
 ```
 
 ### H.265 MP4 example
 
 ```bash
 python deepstream_speed.py --video sample.mp4 \
-  --config ds_config.txt --db test.db --ppm 20
+  --config ds_config.txt --db test.db --ppm 20 --engine trafficcamnet.trt
 ```
 
 `--ppm` is the pixel-per-meter scale for your camera view. Speeds are written to the SQLite database specified with `--db`.
@@ -66,7 +66,15 @@ Click the four lane corners starting from the near left and proceeding clockwise
 
 ## nvinfer configuration
 
-`ds_config.txt` is a minimal configuration for an INT8 TensorRT-optimized YOLOv8l engine. Replace `model-engine-file` with your preferred engine if needed.
+`ds_config.txt` ships with a default TensorRT engine built from NVIDIA's TrafficCamNet model (`trafficcamnet.trt`). Use `--engine` to point to any custom `.trt` file if you have retrained a detector.
+
+## Retraining with NVIDIA TAO
+
+To train your own detector (for example a YOLOv9 model) install the NVIDIA TAO Toolkit and run the training commands inside its Docker container. After training:
+
+1. Export the model to ONNX using `tao export`.
+2. Convert the ONNX file to TensorRT with `tao-converter` to produce `your_model.trt`.
+3. Run `deepstream_speed.py --engine your_model.trt` to use the new network.
 
 ## Database schema
 

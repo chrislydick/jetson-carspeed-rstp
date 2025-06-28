@@ -33,6 +33,7 @@ def load_homography(path: str):
 def build_pipeline(
     uri: str,
     config: str,
+    engine: str,
     db: str,
     ppm: float,
     is_rtsp: bool,
@@ -51,7 +52,7 @@ def build_pipeline(
     )
     pipe_desc = (
         f"{src} ! nvstreammux name=mux batch-size=1 width=1280 height=720 ! "
-        f"nvinfer config-file-path={config} ! nvtracker ! "
+        f"nvinfer config-file-path={config} model-engine-file={engine} ! nvtracker ! "
         f"speedtrack ppm={ppm} db={db} window={window}{homography_str} ! "
         f"fakesink sync=false"
     )
@@ -64,16 +65,26 @@ def main() -> None:
     src_group.add_argument("--rtsp", help="RTSP stream URL")
     src_group.add_argument("--video", help="Path to H.265 MP4 file")
     parser.add_argument("--config", default="ds_config.txt", help="nvinfer config file")
+    parser.add_argument("--engine", default="trafficcamnet.trt", help="TensorRT engine (.trt)")
     parser.add_argument("--db", default="vehicles.db", help="SQLite DB path")
     parser.add_argument("--ppm", type=float, required=True, help="Pixels per meter")
     parser.add_argument("--homography", help="Path to 3x3 homography JSON/YAML")
     parser.add_argument("--window", type=int, default=3, help="History window size")
     args = parser.parse_args()
+    if not args.engine.endswith(".trt"):
+        parser.error("--engine must specify a .trt file")
 
     uri = args.rtsp if args.rtsp else args.video
     H = load_homography(args.homography) if args.homography else None
     pipeline = build_pipeline(
-        uri, args.config, args.db, args.ppm, args.rtsp is not None, H, args.window
+        uri,
+        args.config,
+        args.engine,
+        args.db,
+        args.ppm,
+        args.rtsp is not None,
+        H,
+        args.window,
     )
     bus = pipeline.get_bus()
     pipeline.set_state(Gst.State.PLAYING)
