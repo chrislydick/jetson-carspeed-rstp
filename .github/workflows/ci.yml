@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang python3-gi python3-pip
+          pip install pytest PyYAML
+      - name: Static analysis
+        run: clang --analyze speed_plugin.c
+      - name: Lint Python
+        run: python -m py_compile deepstream_speed.py
+      - name: Run tests
+        run: pytest -q

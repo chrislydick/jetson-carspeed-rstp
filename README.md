@@ -109,3 +109,15 @@ pytest -q
 
 Some tests rely on GStreamer and DeepStream. If these dependencies are not
 available, they will be skipped.
+
+### Docker
+
+A `Dockerfile` is included for reproducible JetPack 6.0 builds. Build and run:
+
+```bash
+docker build -t carspeed .
+docker run --runtime nvidia -it carspeed
+```
+
+Continuous integration executes `pytest` and a static analysis pass with
+`clang --analyze` on every pull request.
