@@ -6,18 +6,84 @@
 #include <math.h>
 
 typedef struct {
+  gdouble x;
+  gdouble y;
+  gdouble ts;
+} HistoryPoint;
+
+typedef struct {
+  gint cap;
+  gint count;
+  gint idx;
+  HistoryPoint *pts;
+} History;
+
+static History *history_new(gint cap) {
+  History *h = g_new0(History, 1);
+  h->cap = cap;
+  h->count = 0;
+  h->idx = 0;
+  h->pts = g_new0(HistoryPoint, cap);
+  return h;
+}
+
+static void history_free(gpointer data) {
+  History *h = (History *)data;
+  g_free(h->pts);
+  g_free(h);
+}
+
+static void history_add(History *h, gdouble x, gdouble y, gdouble ts) {
+  h->pts[h->idx].x = x;
+  h->pts[h->idx].y = y;
+  h->pts[h->idx].ts = ts;
+  h->idx = (h->idx + 1) % h->cap;
+  if (h->count < h->cap)
+    h->count++;
+}
+
+static gdouble history_speed(const History *h, gdouble ppm) {
+  if (h->count < 2)
+    return 0.0;
+  gdouble sum_t = 0.0, sum_x = 0.0, sum_y = 0.0;
+  for (int i = 0; i < h->count; i++) {
+    int idx = (h->idx - h->count + i + h->cap) % h->cap;
+    sum_t += h->pts[idx].ts;
+    sum_x += h->pts[idx].x;
+    sum_y += h->pts[idx].y;
+  }
+  gdouble mean_t = sum_t / h->count;
+  gdouble mean_x = sum_x / h->count;
+  gdouble mean_y = sum_y / h->count;
+  gdouble num_x = 0.0, num_y = 0.0, den = 0.0;
+  for (int i = 0; i < h->count; i++) {
+    int idx = (h->idx - h->count + i + h->cap) % h->cap;
+    gdouble dt = h->pts[idx].ts - mean_t;
+    num_x += dt * (h->pts[idx].x - mean_x);
+    num_y += dt * (h->pts[idx].y - mean_y);
+    den += dt * dt;
+  }
+  if (den == 0.0)
+    return 0.0;
+  gdouble vx = num_x / den;
+  gdouble vy = num_y / den;
+  return sqrt(vx * vx + vy * vy) / ppm;
+}
+
+typedef struct {
   GstBaseTransform parent;
   gfloat ppm;
   gchar *db_path;
   sqlite3 *db;
-  GHashTable *prev; /* key: guint64 track id, value: gdouble[3] {x, y, ts} */
+  gint window;
+  GHashTable *history; /* key: guint64 track id, value: History* */
   gdouble H[9];
   gboolean have_h;
 } GstSpeed;
 
 G_DEFINE_TYPE(GstSpeed, gst_speed, GST_TYPE_BASE_TRANSFORM);
 
-enum { PROP_0, PROP_PPM, PROP_DB, PROP_HOMOGRAPHY };
+enum { PROP_0, PROP_PPM, PROP_DB, PROP_HOMOGRAPHY, PROP_WINDOW };
 
 static void gst_speed_set_property(GObject *object, guint prop_id,
                                    const GValue *value, GParamSpec *pspec) {
@@ -43,6 +109,11 @@ static void gst_speed_set_property(GObject *object, guint prop_id,
     }
     break;
   }
+  case PROP_WINDOW:
+    speed->window = g_value_get_int(value);
+    if (speed->window < 2)
+      speed->window = 2;
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
   }
@@ -71,6 +142,9 @@ static void gst_speed_get_property(GObject *object, guint prop_id, GValue *value
     }
     break;
   }
+  case PROP_WINDOW:
+    g_value_set_int(value, speed->window);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
   }
@@ -78,9 +152,11 @@ static void gst_speed_get_property(GObject *object, guint prop_id, GValue *value
 
 static void gst_speed_finalize(GObject *obj) {
   GstSpeed *speed = (GstSpeed *)obj;
-  if (speed->db) sqlite3_close(speed->db);
+  if (speed->db)
+    sqlite3_close(speed->db);
   g_free(speed->db_path);
-  if (speed->prev) g_hash_table_unref(speed->prev);
+  if (speed->history)
+    g_hash_table_unref(speed->history);
   G_OBJECT_CLASS(gst_speed_parent_class)->finalize(obj);
 }
 
@@ -94,7 +170,8 @@ static gboolean gst_speed_start(GstBaseTransform *trans) {
                  "CREATE TABLE IF NOT EXISTS vehicles (timestamp REAL, track_id INTEGER, speed REAL);",
                  NULL, NULL, NULL);
   }
-  speed->prev = g_hash_table_new_full(g_int64_hash, g_int64_equal, NULL, g_free);
+  speed->history = g_hash_table_new_full(g_int64_hash, g_int64_equal, NULL,
+                                         history_free);
   return TRUE;
 }
 
@@ -120,23 +197,13 @@ static GstFlowReturn gst_speed_transform_ip(GstBaseTransform *trans, GstBuffer *
           cy = ty / tz;
         }
       }
-      gdouble *prev = g_hash_table_lookup(speed->prev, GUINT_TO_POINTER(tid));
-      gdouble spd = 0.0;
-      if (prev) {
-        gdouble dist = hypot(cx - prev[0], cy - prev[1]);
-        gdouble dt = ts - prev[2];
-        if (dt > 0)
-          spd = (dist / speed->ppm) / dt;
-        prev[0] = cx;
-        prev[1] = cy;
-        prev[2] = ts;
-      } else {
-        gdouble *vals = g_new(gdouble, 3);
-        vals[0] = cx;
-        vals[1] = cy;
-        vals[2] = ts;
-        g_hash_table_insert(speed->prev, GUINT_TO_POINTER(tid), vals);
+      History *hist = g_hash_table_lookup(speed->history, GUINT_TO_POINTER(tid));
+      if (!hist) {
+        hist = history_new(speed->window);
+        g_hash_table_insert(speed->history, GUINT_TO_POINTER(tid), hist);
       }
+      history_add(hist, cx, cy, ts);
+      gdouble spd = history_speed(hist, speed->ppm);
       if (spd > 0) {
         char *sql = sqlite3_mprintf("INSERT INTO vehicles(timestamp, track_id, speed) VALUES(%f,%llu,%f);", ts, (unsigned long long)tid, spd);
         sqlite3_exec(speed->db, sql, NULL, NULL, NULL);
@@ -164,12 +231,17 @@ static void gst_speed_class_init(GstSpeedClass *klass) {
       g_param_spec_string("db", "Database path", "SQLite DB path", "vehicles.db", G_PARAM_READWRITE));
   g_object_class_install_property(gobject_class, PROP_HOMOGRAPHY,
       g_param_spec_string("homography", "3x3 homography", "Row-major matrix", "", G_PARAM_READWRITE));
+  g_object_class_install_property(gobject_class, PROP_WINDOW,
+      g_param_spec_int("window", "History window", "Number of observations", 2, 60,
+                       3, G_PARAM_READWRITE));
 }
 
 static void gst_speed_init(GstSpeed *speed) {
   speed->ppm = 20.0;
   speed->db_path = g_strdup("vehicles.db");
   speed->have_h = FALSE;
+  speed->window = 3;
+  speed->history = NULL;
   for (int i = 0; i < 9; i++)
     speed->H[i] = (i % 4 == 0) ? 1.0 : 0.0; /* identity */
 }
