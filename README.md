@@ -44,6 +44,26 @@ need to be mapped before speed calculation.
 `--window` controls how many observations are used to smooth the speed
 measurement.
 
+## Calibrating the homography
+
+The helper script `calibrate_homography.py` can generate the transformation
+matrix for your camera view:
+
+```bash
+# grab a frame from an RTSP stream
+python calibrate_homography.py --rtsp rtsp://camera/stream \
+  --width 3.5 --length 20
+
+# or load an existing image
+python calibrate_homography.py --image frame.jpg \
+  --width 3.5 --length 20
+```
+
+Click the four lane corners starting from the near left and proceeding clockwise
+(left-front, right-front, right-rear, left-rear). The script saves
+`homography.json`, which can be supplied to `deepstream_speed.py` via
+`--homography`.
+
 ## nvinfer configuration
 
 `ds_config.txt` is a minimal configuration for an INT8 TensorRT-optimized YOLOv8l engine. Replace `model-engine-file` with your preferred engine if needed.
