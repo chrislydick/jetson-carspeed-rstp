@@ -37,6 +37,7 @@ def build_pipeline(
     ppm: float,
     is_rtsp: bool,
     homography=None,
+    window: int = 3,
 ) -> Gst.Pipeline:
     if is_rtsp:
         src = f"rtspsrc location={uri} latency=100 ! rtph265depay ! h265parse ! nvv4l2decoder"
@@ -51,7 +52,8 @@ def build_pipeline(
     pipe_desc = (
         f"{src} ! nvstreammux name=mux batch-size=1 width=1280 height=720 ! "
         f"nvinfer config-file-path={config} ! nvtracker ! "
-        f"speedtrack ppm={ppm} db={db}{homography_str} ! fakesink sync=false"
+        f"speedtrack ppm={ppm} db={db} window={window}{homography_str} ! "
+        f"fakesink sync=false"
     )
     return Gst.parse_launch(pipe_desc)
 
@@ -65,11 +67,14 @@ def main() -> None:
     parser.add_argument("--db", default="vehicles.db", help="SQLite DB path")
     parser.add_argument("--ppm", type=float, required=True, help="Pixels per meter")
     parser.add_argument("--homography", help="Path to 3x3 homography JSON/YAML")
+    parser.add_argument("--window", type=int, default=3, help="History window size")
     args = parser.parse_args()
 
     uri = args.rtsp if args.rtsp else args.video
     H = load_homography(args.homography) if args.homography else None
-    pipeline = build_pipeline(uri, args.config, args.db, args.ppm, args.rtsp is not None, H)
+    pipeline = build_pipeline(
+        uri, args.config, args.db, args.ppm, args.rtsp is not None, H, args.window
+    )
     bus = pipeline.get_bus()
     pipeline.set_state(Gst.State.PLAYING)
 
