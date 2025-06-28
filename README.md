@@ -39,6 +39,8 @@ python deepstream_speed.py --video sample.mp4 \
 ```
 
 `--ppm` is the pixel-per-meter scale for your camera view. Speeds are written to the SQLite database specified with `--db`.
+Use `--homography` to load a 3×3 matrix from a JSON or YAML file if coordinates
+need to be mapped before speed calculation.
 
 ## nvinfer configuration
 
