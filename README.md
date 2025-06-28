@@ -53,3 +53,14 @@ The plug-in writes rows to the `vehicles` table containing:
 - `speed` – estimated speed in meters per second
 
 Use standard SQLite tools to analyse the results.
+
+## Development
+
+Run the unit tests with `pytest -q`:
+
+```bash
+pytest -q
+```
+
+Some tests rely on GStreamer and DeepStream. If these dependencies are not
+available, they will be skipped.
