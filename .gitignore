@@ -1,5 +1,11 @@
 __pycache__/
+*.pyc
 .pytest_cache/
-libspeedtrack.so
+*.so
 *.db
 *.o
+# Editor backups
+*~
+*.swp
+# macOS files
+.DS_Store
