@@ -11,11 +11,13 @@ typedef struct {
   gchar *db_path;
   sqlite3 *db;
   GHashTable *prev; /* key: guint64 track id, value: gdouble[3] {x, y, ts} */
+  gdouble H[9];
+  gboolean have_h;
 } GstSpeed;
 
 G_DEFINE_TYPE(GstSpeed, gst_speed, GST_TYPE_BASE_TRANSFORM);
 
-enum { PROP_0, PROP_PPM, PROP_DB };
+enum { PROP_0, PROP_PPM, PROP_DB, PROP_HOMOGRAPHY };
 
 static void gst_speed_set_property(GObject *object, guint prop_id,
                                    const GValue *value, GParamSpec *pspec) {
@@ -28,6 +30,19 @@ static void gst_speed_set_property(GObject *object, guint prop_id,
     g_free(speed->db_path);
     speed->db_path = g_value_dup_string(value);
     break;
+  case PROP_HOMOGRAPHY: {
+    const gchar *s = g_value_get_string(value);
+    speed->have_h = FALSE;
+    if (s && *s) {
+      gchar **tokens = g_strsplit_set(s, ",; ", -1);
+      int i;
+      for (i = 0; tokens[i] && i < 9; i++)
+        speed->H[i] = g_ascii_strtod(tokens[i], NULL);
+      speed->have_h = (i == 9);
+      g_strfreev(tokens);
+    }
+    break;
+  }
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
   }
@@ -43,6 +58,19 @@ static void gst_speed_get_property(GObject *object, guint prop_id, GValue *value
   case PROP_DB:
     g_value_set_string(value, speed->db_path);
     break;
+  case PROP_HOMOGRAPHY: {
+    if (speed->have_h) {
+      gchar *str = g_strdup_printf(
+          "%f,%f,%f,%f,%f,%f,%f,%f,%f",
+          speed->H[0], speed->H[1], speed->H[2],
+          speed->H[3], speed->H[4], speed->H[5],
+          speed->H[6], speed->H[7], speed->H[8]);
+      g_value_take_string(value, str);
+    } else {
+      g_value_set_string(value, "");
+    }
+    break;
+  }
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
   }
@@ -83,6 +111,15 @@ static GstFlowReturn gst_speed_transform_ip(GstBaseTransform *trans, GstBuffer *
       guint64 tid = obj->object_id;
       gdouble cx = obj->rect_params.left + obj->rect_params.width / 2.0;
       gdouble cy = obj->rect_params.top + obj->rect_params.height / 2.0;
+      if (speed->have_h) {
+        gdouble tx = speed->H[0] * cx + speed->H[1] * cy + speed->H[2];
+        gdouble ty = speed->H[3] * cx + speed->H[4] * cy + speed->H[5];
+        gdouble tz = speed->H[6] * cx + speed->H[7] * cy + speed->H[8];
+        if (tz != 0) {
+          cx = tx / tz;
+          cy = ty / tz;
+        }
+      }
       gdouble *prev = g_hash_table_lookup(speed->prev, GUINT_TO_POINTER(tid));
       gdouble spd = 0.0;
       if (prev) {
@@ -125,11 +162,16 @@ static void gst_speed_class_init(GstSpeedClass *klass) {
       g_param_spec_float("ppm", "Pixels per meter", "Scaling for speed", 0.1, 1000.0, 20.0, G_PARAM_READWRITE));
   g_object_class_install_property(gobject_class, PROP_DB,
       g_param_spec_string("db", "Database path", "SQLite DB path", "vehicles.db", G_PARAM_READWRITE));
+  g_object_class_install_property(gobject_class, PROP_HOMOGRAPHY,
+      g_param_spec_string("homography", "3x3 homography", "Row-major matrix", "", G_PARAM_READWRITE));
 }
 
 static void gst_speed_init(GstSpeed *speed) {
   speed->ppm = 20.0;
   speed->db_path = g_strdup("vehicles.db");
+  speed->have_h = FALSE;
+  for (int i = 0; i < 9; i++)
+    speed->H[i] = (i % 4 == 0) ? 1.0 : 0.0; /* identity */
 }
 
 static gboolean plugin_init(GstPlugin *plugin) {
