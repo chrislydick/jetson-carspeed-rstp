@@ -16,7 +16,7 @@ Compile `speed_plugin.c` into a shared object and place it in a location searche
 ```bash
 gcc -Wall -fPIC -shared speed_plugin.c -o libspeedtrack.so \
   $(pkg-config --cflags --libs gstreamer-1.0 gstreamer-base-1.0) \
-  -lnvds_meta -lsqlite3
+  -lnvds_meta -lsqlite3 -lm
 export GST_PLUGIN_PATH=$PWD:$GST_PLUGIN_PATH
 ```
 
