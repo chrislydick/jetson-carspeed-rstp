@@ -10,37 +10,9 @@ except Exception:  # pragma: no cover - PyYAML may be missing
 
 import cv2
 from ultralytics import YOLO
+from tracker import ByteTracker
 
 
-class VehicleTrack:
-    def __init__(self, center: Tuple[float, float], ts: float):
-        self.center = center
-        self.last_ts = ts
-
-
-class SimpleTracker:
-    def __init__(self, max_distance: float = 50):
-        self.tracks = {}
-        self.next_id = 0
-        self.max_distance = max_distance
-
-    def update(self, detections: List[Tuple[int, int, int, int]], ts: float):
-        matches = {}
-        for box in detections:
-            cx = (box[0] + box[2]) / 2
-            cy = (box[1] + box[3]) / 2
-            matched_id = None
-            for tid, track in self.tracks.items():
-                dist = ((cx - track.center[0]) ** 2 + (cy - track.center[1]) ** 2) ** 0.5
-                if dist < self.max_distance:
-                    matched_id = tid
-                    break
-            if matched_id is None:
-                matched_id = self.next_id
-                self.next_id += 1
-            self.tracks[matched_id] = VehicleTrack((cx, cy), ts)
-            matches[matched_id] = (cx, cy)
-        return matches
 
 
 def load_homography(path: str) -> Optional[List[float]]:
@@ -80,12 +52,13 @@ def run_capture(
     model_path: str,
     db_path: str,
     ppm: float,
-    max_distance: float = 50,
+    iou_threshold: float = 0.3,
+    decay_time: float = 1.0,
     homography: Optional[List[float]] = None,
 ):
     model = YOLO(model_path)
     conn = init_db(db_path)
-    tracker = SimpleTracker(max_distance)
+    tracker = ByteTracker(iou_threshold, decay_time)
     prev_positions = {}
 
     while True:
