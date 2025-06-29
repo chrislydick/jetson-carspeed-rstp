@@ -3,8 +3,8 @@
 import argparse
 import json
 import logging
-
 logger = logging.getLogger(__name__)
+
 import gi
 
 try:

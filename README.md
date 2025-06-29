@@ -70,6 +70,8 @@ Click the four lane corners starting from the near left and proceeding clockwise
 (left-front, right-front, right-rear, left-rear). The script saves
 `homography.json`, which can be supplied to `deepstream_speed.py` via
 `--homography`.
+The script outputs progress using Python's `logging` module and honours
+the `--log-level` setting.
 
 ## nvinfer configuration
 
