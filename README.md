@@ -8,6 +8,7 @@ This repository demonstrates a DeepStream pipeline for measuring vehicle speed f
 * Python 3.8+
 * GObject introspection bindings (PyGObject)
 * SQLite development libraries for building the plug-in
+* `libgstreamer1.0-dev` and `libgstreamer-plugins-base1.0-dev` to compile the plug-in
 
 ## Building the speed plug-in
 
@@ -122,4 +123,5 @@ docker run --runtime nvidia -it carspeed
 ```
 
 Continuous integration executes `pytest` and a static analysis pass with
-`clang --analyze` on every pull request.
+`clang --analyze speed_plugin.c $(pkg-config --cflags --libs gstreamer-1.0 gstreamer-base-1.0)`
+on every pull request.
