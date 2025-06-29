@@ -2,6 +2,7 @@
 """DeepStream-based car speed detection pipeline."""
 import argparse
 import json
+import logging
 import gi
 
 try:
@@ -76,7 +77,12 @@ def main() -> None:
     parser.add_argument("--window", type=int, default=3, help="History window size")
     parser.add_argument("--batch-size", type=int, default=1, help="nvstreammux batch size")
     parser.add_argument("--resize", help="Resize as WIDTHxHEIGHT for nvstreammux")
+    parser.add_argument("--log-level", default="INFO", help="Logging level")
     args = parser.parse_args()
+    logging.basicConfig(
+        level=args.log_level.upper(),
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
     if not args.engine.endswith(".trt"):
         parser.error("--engine must specify a .trt file")
 
