@@ -29,14 +29,16 @@ The `deepstream_speed.py` helper builds a simple pipeline using hardware decode,
 
 ```bash
 python deepstream_speed.py --rtsp rtsp://camera/stream \
-  --config ds_config.txt --db vehicles.db --ppm 20 --engine trafficcamnet.trt
+  --config ds_config.txt --db vehicles.db --ppm 20 \
+  --engine /path/to/trafficcamnet.trt
 ```
 
 ### H.265 MP4 example
 
 ```bash
 python deepstream_speed.py --video sample.mp4 \
-  --config ds_config.txt --db test.db --ppm 20 --engine trafficcamnet.trt
+  --config ds_config.txt --db test.db --ppm 20 \
+  --engine /path/to/trafficcamnet.trt
 ```
 
 `--ppm` is the pixel-per-meter scale for your camera view. Speeds are written to the SQLite database specified with `--db`.
@@ -69,7 +71,7 @@ Click the four lane corners starting from the near left and proceeding clockwise
 
 ## nvinfer configuration
 
-`ds_config.txt` ships with a default TensorRT engine built from NVIDIA's TrafficCamNet model (`trafficcamnet.trt`). Use `--engine` to point to any custom `.trt` file if you have retrained a detector.
+`ds_config.txt` does not include an engine file. Download the pre-built TrafficCamNet engine from NGC or create one with the TAO converter, then provide its path via `--engine`. Use this option as well if you retrain a detector and build a new `.trt` file.
 
 ## Retraining with NVIDIA TAO
 
