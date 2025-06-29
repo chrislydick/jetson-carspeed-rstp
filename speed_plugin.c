@@ -1,7 +1,38 @@
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
+#ifdef HAVE_NVDS
 #include <nvds_meta.h>
 #include <nvds_meta_schema.h>
+#else
+typedef struct _NvDsMetaList {
+  struct _NvDsMetaList *next;
+  void *data;
+} NvDsMetaList;
+
+typedef struct _NvDsObjectMeta {
+  guint64 object_id;
+  struct {
+    gfloat left;
+    gfloat top;
+    gfloat width;
+    gfloat height;
+  } rect_params;
+} NvDsObjectMeta;
+
+typedef struct _NvDsFrameMeta {
+  NvDsMetaList *obj_meta_list;
+  guint64 ntp_timestamp;
+} NvDsFrameMeta;
+
+typedef struct _NvDsBatchMeta {
+  NvDsMetaList *frame_meta_list;
+} NvDsBatchMeta;
+
+static inline NvDsBatchMeta *gst_buffer_get_nvds_batch_meta(GstBuffer *buf) {
+  (void)buf;
+  return NULL;
+}
+#endif
 #include <sqlite3.h>
 #include <math.h>
 
@@ -84,6 +115,10 @@ typedef struct {
   gboolean have_h;
   GString *sql_batch;
 } GstSpeed;
+
+typedef struct {
+  GstBaseTransformClass parent_class;
+} GstSpeedClass;
 
 G_DEFINE_TYPE(GstSpeed, gst_speed, GST_TYPE_BASE_TRANSFORM);
 

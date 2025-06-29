@@ -10,46 +10,43 @@ This repository demonstrates a DeepStream pipeline for measuring vehicle speed f
 * SQLite development libraries for building the plug-in
 * `libgstreamer1.0-dev` and `libgstreamer-plugins-base1.0-dev` to compile the plug-in
 
-## Building the speed plug-in
-
-Compile `speed_plugin.c` into a shared object and place it in a location searched by GStreamer:
+## Installation
 
 ```bash
-gcc -Wall -fPIC -shared speed_plugin.c -o libspeedtrack.so \
-  $(pkg-config --cflags --libs gstreamer-1.0 gstreamer-base-1.0) \
-  -lnvds_meta -lsqlite3 -lm
+pip install -e .
+```
+
+
+## Building the speed plug-in
+
+Run `make` to build `libspeedtrack.so`. If the NVIDIA DeepStream headers are
+installed, pass `USE_DEEPSTREAM=1` to enable full functionality. The compiled
+library must be on `GST_PLUGIN_PATH` for GStreamer to load it:
+
+```bash
+make [USE_DEEPSTREAM=1]
 export GST_PLUGIN_PATH=$PWD:$GST_PLUGIN_PATH
 ```
 
 ## Running the pipeline
 
-The `deepstream_speed.py` helper builds a simple pipeline using hardware decode, `nvinfer`, `nvtracker`, and the custom `speedtrack` element.
+Use the `carspeed` CLI (installed via `pip install -e .`) to build a DeepStream pipeline using hardware decode, `nvinfer`, `nvtracker`, and the custom `speedtrack` element.
 
 ### RTSP example
-
 ```bash
-python deepstream_speed.py --rtsp rtsp://camera/stream \
+carspeed --rtsp rtsp://camera/stream \
   --config ds_config.txt --db vehicles.db --ppm 20 \
   --engine /path/to/trafficcamnet.trt
 ```
 
 ### H.265 MP4 example
-
 ```bash
-python deepstream_speed.py --video sample.mp4 \
+carspeed --video sample.mp4 \
   --config ds_config.txt --db test.db --ppm 20 \
   --engine /path/to/trafficcamnet.trt
 ```
+Scripts `deepstream_speed.py` and `carspeed.py` are kept for backward compatibility and simply invoke this CLI.
 
-`--ppm` is the pixel-per-meter scale for your camera view. Speeds are written to the SQLite database specified with `--db`.
-Use `--homography` to load a 3×3 matrix from a JSON or YAML file if coordinates
-need to be mapped before speed calculation.
-`--window` controls how many observations are used to smooth the speed
-measurement.
-`--batch-size` sets the number of streams processed together by `nvstreammux` and
-`--resize` allows specifying the processing resolution as `WIDTHxHEIGHT`.
-`--log-level` controls Python logging verbosity (e.g. `DEBUG`). The C plug-in
-uses the GStreamer debug system and can be enabled with `GST_DEBUG`.
 
 ## Calibrating the homography
 

@@ -1,24 +1,34 @@
 #!/usr/bin/env python3
 """Interactive homography calibration tool."""
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging
-logger = logging.getLogger(__name__)
-
 from typing import List
 
 import cv2
 
+logger = logging.getLogger(__name__)
+
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Calibrate homography from four points")
+    parser = argparse.ArgumentParser(
+        description="Calibrate homography from four points"
+    )
     src = parser.add_mutually_exclusive_group(required=True)
     src.add_argument("--image", help="Path to input image")
     src.add_argument("--rtsp", help="RTSP URL to grab a frame")
-    parser.add_argument("--width", type=float, required=True, help="Real-world lane width in meters")
-    parser.add_argument("--length", type=float, required=True, help="Real-world lane length in meters")
-    parser.add_argument("--output", default="homography.json", help="Output JSON file for matrix")
+    parser.add_argument(
+        "--width", type=float, required=True, help="Real-world lane width in meters"
+    )
+    parser.add_argument(
+        "--length", type=float, required=True, help="Real-world lane length in meters"
+    )
+    parser.add_argument(
+        "--output", default="homography.json", help="Output JSON file for matrix"
+    )
     return parser.parse_args()
 
 
@@ -47,7 +57,6 @@ def collect_points(frame) -> List[List[int]]:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
     args = parse_args()
     logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
     if args.image:
@@ -83,8 +92,3 @@ def main() -> None:
     with open(args.output, "w") as f:
         json.dump(data, f, indent=2)
     logger.info("Saved homography to %s", args.output)
-
-
-
-if __name__ == "__main__":
-    main()
