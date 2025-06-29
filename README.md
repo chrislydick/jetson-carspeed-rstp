@@ -70,6 +70,13 @@ Click the four lane corners starting from the near left and proceeding clockwise
 The script outputs progress using Python's `logging` module and honours
 the `--log-level` setting.
 
+A lightweight PySide6 GUI `calibrate_h.py` provides the same functionality
+without the terminal. Launch it with either `--video` or `--rtsp` to load a
+frame. Click the lane corners starting from the bottom-left and proceeding
+clockwise. After entering the real-world coordinates for each corner the tool
+saves a JSON file containing the image points, world points and the computed
+homography matrix.
+
 ## nvinfer configuration
 
 `ds_config.txt` does not include an engine file. Download the pre-built TrafficCamNet engine from NGC or create one with the TAO converter, then provide its path via `--engine`. Use this option as well if you retrain a detector and build a new `.trt` file.
