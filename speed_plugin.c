@@ -1,5 +1,8 @@
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
+#ifndef PACKAGE
+#define PACKAGE "speedtrack"
+#endif
 #ifdef HAVE_NVDS
 #include <nvds_meta.h>
 #include <nvds_meta_schema.h>
