@@ -4,6 +4,8 @@
 import argparse
 import json
 import logging
+logger = logging.getLogger(__name__)
+
 from typing import List
 
 import cv2
@@ -47,6 +49,7 @@ def collect_points(frame) -> List[List[int]]:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
     args = parse_args()
+    logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
     if args.image:
         frame = cv2.imread(args.image)
         if frame is None:
@@ -60,7 +63,8 @@ def main() -> None:
 
     pts = collect_points(frame)
     if len(pts) != 4:
-        logging.error("Need four points to compute homography")
+        logger.error("Need four points to compute homography")
+
         return
 
     src_pts = cv2.float32(pts)
@@ -78,7 +82,8 @@ def main() -> None:
     data = [[float(v) for v in row] for row in H]
     with open(args.output, "w") as f:
         json.dump(data, f, indent=2)
-    logging.info("Saved homography to %s", args.output)
+    logger.info("Saved homography to %s", args.output)
+
 
 
 if __name__ == "__main__":

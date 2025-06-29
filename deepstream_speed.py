@@ -3,6 +3,8 @@
 import argparse
 import json
 import logging
+logger = logging.getLogger(__name__)
+
 import gi
 
 try:
@@ -79,10 +81,8 @@ def main() -> None:
     parser.add_argument("--resize", help="Resize as WIDTHxHEIGHT for nvstreammux")
     parser.add_argument("--log-level", default="INFO", help="Logging level")
     args = parser.parse_args()
-    logging.basicConfig(
-        level=args.log_level.upper(),
-        format="%(levelname)s:%(name)s:%(message)s",
-    )
+    logging.basicConfig(format="%(levelname)s:%(message)s",
+                        level=getattr(logging, args.log_level.upper(), logging.INFO))
     if not args.engine.endswith(".trt"):
         parser.error("--engine must specify a .trt file")
 
@@ -110,6 +110,7 @@ def main() -> None:
     )
     bus = pipeline.get_bus()
     pipeline.set_state(Gst.State.PLAYING)
+    logger.info("Pipeline started")
 
     try:
         while True:
@@ -122,6 +123,7 @@ def main() -> None:
         pass
 
     pipeline.set_state(Gst.State.NULL)
+    logger.info("Pipeline stopped")
 
 
 if __name__ == "__main__":
