@@ -2,6 +2,7 @@
 """DeepStream-based car speed detection pipeline."""
 import argparse
 import json
+import logging
 import gi
 
 try:
@@ -76,7 +77,10 @@ def main() -> None:
     parser.add_argument("--window", type=int, default=3, help="History window size")
     parser.add_argument("--batch-size", type=int, default=1, help="nvstreammux batch size")
     parser.add_argument("--resize", help="Resize as WIDTHxHEIGHT for nvstreammux")
+    parser.add_argument("--log-level", default="INFO", help="Logging level")
     args = parser.parse_args()
+    logging.basicConfig(format="%(levelname)s:%(message)s",
+                        level=getattr(logging, args.log_level.upper(), logging.INFO))
     if not args.engine.endswith(".trt"):
         parser.error("--engine must specify a .trt file")
 
@@ -104,6 +108,7 @@ def main() -> None:
     )
     bus = pipeline.get_bus()
     pipeline.set_state(Gst.State.PLAYING)
+    logging.info("Pipeline started")
 
     try:
         while True:
@@ -116,6 +121,7 @@ def main() -> None:
         pass
 
     pipeline.set_state(Gst.State.NULL)
+    logging.info("Pipeline stopped")
 
 
 if __name__ == "__main__":
