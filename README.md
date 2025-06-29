@@ -9,6 +9,7 @@ This repository demonstrates a DeepStream pipeline for measuring vehicle speed f
 * GObject introspection bindings (PyGObject)
 * SQLite development libraries for building the plug-in
 * `libgstreamer1.0-dev` and `libgstreamer-plugins-base1.0-dev` to compile the plug-in
+  (install with `sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev` on Ubuntu)
 
 ## Installation
 
