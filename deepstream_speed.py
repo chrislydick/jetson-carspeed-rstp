@@ -3,6 +3,8 @@
 import argparse
 import json
 import logging
+
+logger = logging.getLogger(__name__)
 import gi
 
 try:
@@ -108,7 +110,7 @@ def main() -> None:
     )
     bus = pipeline.get_bus()
     pipeline.set_state(Gst.State.PLAYING)
-    logging.info("Pipeline started")
+    logger.info("Pipeline started")
 
     try:
         while True:
@@ -121,7 +123,7 @@ def main() -> None:
         pass
 
     pipeline.set_state(Gst.State.NULL)
-    logging.info("Pipeline stopped")
+    logger.info("Pipeline stopped")
 
 
 if __name__ == "__main__":
