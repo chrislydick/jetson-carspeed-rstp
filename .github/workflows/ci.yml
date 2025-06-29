@@ -12,10 +12,12 @@ jobs:
       - name: Install packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang python3-gi python3-pip
+          sudo apt-get install -y \
+            clang python3-gi python3-pip \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
           pip install pytest PyYAML
       - name: Static analysis
-        run: clang --analyze speed_plugin.c
+        run: clang --analyze speed_plugin.c $(pkg-config --cflags --libs gstreamer-1.0 gstreamer-base-1.0)
       - name: Lint Python
         run: python -m py_compile deepstream_speed.py
       - name: Run tests
