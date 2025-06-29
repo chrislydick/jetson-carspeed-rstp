@@ -5,6 +5,9 @@
 #include <sqlite3.h>
 #include <math.h>
 
+GST_DEBUG_CATEGORY_STATIC(speed_debug);
+#define GST_CAT_DEFAULT speed_debug
+
 typedef struct {
   gdouble x;
   gdouble y;
@@ -165,14 +168,16 @@ static void gst_speed_finalize(GObject *obj) {
 
 static gboolean gst_speed_start(GstBaseTransform *trans) {
   GstSpeed *speed = (GstSpeed *)trans;
+  GST_DEBUG_OBJECT(speed, "opening DB %s", speed->db_path);
   if (sqlite3_open(speed->db_path, &speed->db) != SQLITE_OK) {
-    g_printerr("Could not open DB %s\n", speed->db_path);
+    GST_ERROR_OBJECT(speed, "Could not open DB %s", speed->db_path);
     speed->db = NULL;
   } else {
     sqlite3_exec(speed->db,
                  "CREATE TABLE IF NOT EXISTS vehicles (timestamp REAL, track_id INTEGER, speed REAL);",
                  NULL, NULL, NULL);
     speed->sql_batch = g_string_new(NULL);
+    GST_DEBUG_OBJECT(speed, "DB opened");
   }
   speed->history = g_hash_table_new_full(g_int64_hash, g_int64_equal, NULL,
                                          history_free);
@@ -210,13 +215,16 @@ static GstFlowReturn gst_speed_transform_ip(GstBaseTransform *trans, GstBuffer *
       history_add(hist, cx, cy, ts);
       gdouble spd = history_speed(hist, speed->ppm);
       if (spd > 0) {
+        GST_LOG_OBJECT(speed, "track %llu speed=%f", (unsigned long long)tid, spd);
         char *sql = sqlite3_mprintf("INSERT INTO vehicles(timestamp, track_id, speed) VALUES(%f,%llu,%f);", ts, (unsigned long long)tid, spd);
         g_string_append(speed->sql_batch, sql);
         sqlite3_free(sql);
       }
     }
-    if (speed->sql_batch->len > 0)
+    if (speed->sql_batch->len > 0) {
       sqlite3_exec(speed->db, speed->sql_batch->str, NULL, NULL, NULL);
+      GST_LOG_OBJECT(speed, "wrote %d bytes", speed->sql_batch->len);
+    }
   }
   return GST_FLOW_OK;
 }
@@ -255,7 +263,9 @@ static void gst_speed_init(GstSpeed *speed) {
 }
 
 static gboolean plugin_init(GstPlugin *plugin) {
-  return gst_element_register(plugin, "speedtrack", GST_RANK_NONE, gst_speed_get_type());
+  GST_DEBUG_CATEGORY_INIT(speed_debug, "speedtrack", 0, "Speed estimator plugin");
+  return gst_element_register(plugin, "speedtrack", GST_RANK_NONE,
+                              gst_speed_get_type());
 }
 
 GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR, speedtrack, "Speed estimator", plugin_init, "1.0", "LGPL", "deepstream-speed", "")
