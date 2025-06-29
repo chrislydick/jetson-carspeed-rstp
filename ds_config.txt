@@ -1,6 +1,7 @@
 # Minimal nvinfer config for the default TrafficCamNet engine
 [property]
-model-engine-file=trafficcamnet.trt
+# supply a TensorRT engine with --engine
+model-engine-file=
 batch-size=1
 network-mode=0
 num-detected-classes=1
