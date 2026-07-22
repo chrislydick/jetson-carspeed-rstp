@@ -67,7 +67,8 @@ python calibrate_homography.py --image frame.jpg \
 Click the four lane corners starting from the near left and proceeding clockwise
 (left-front, right-front, right-rear, left-rear). The script saves
 `homography.json`, which can be supplied to `deepstream_speed.py` via
-`--homography`.
+`--homography`. The CLI loads JSON/YAML homography files and passes the
+flattened 3x3 matrix to the `speedtrack` plug-in.
 The script outputs progress using Python's `logging` module and honours
 the `--log-level` setting.
 
@@ -80,7 +81,7 @@ homography matrix.
 
 ## nvinfer configuration
 
-`ds_config.txt` does not include an engine file. Download the pre-built TrafficCamNet engine from NGC or create one with the TAO converter, then provide its path via `--engine`. Use this option as well if you retrain a detector and build a new `.trt` file.
+`ds_config.txt` does not include an engine file. Download the pre-built TrafficCamNet engine from NGC or create one with the TAO converter, then provide its path via `--engine`. At runtime the CLI copies the nvinfer config to a temporary file and fills in `model-engine-file` with the supplied `.trt` path. Use this option as well if you retrain a detector and build a new `.trt` file.
 
 ## Retraining with NVIDIA TAO
 
