@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import tempfile
+from pathlib import Path
 from typing import Iterable, Optional
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover - PyYAML is optional
+    yaml = None
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +40,65 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def load_homography(path: str) -> str:
+    """Return a 3x3 homography file as a comma-separated matrix string."""
+    with open(path, "r", encoding="utf-8") as fh:
+        if Path(path).suffix.lower() in {".yml", ".yaml"}:
+            if yaml is None:
+                raise RuntimeError("PyYAML is required to read YAML homography files")
+            data = yaml.safe_load(fh)
+        else:
+            data = json.load(fh)
+
+    if isinstance(data, dict):
+        data = data.get("homography") or data.get("matrix") or data.get("H")
+    if data is None:
+        raise ValueError("homography file must contain a 3x3 matrix")
+
+    flat = []
+    for row in data:
+        if isinstance(row, (list, tuple)):
+            flat.extend(row)
+        else:
+            flat.append(row)
+    if len(flat) != 9:
+        raise ValueError("homography must have 9 values")
+    return ",".join(str(float(value)) for value in flat)
+
+
+def write_engine_config(config_path: str, engine_path: str) -> str:
+    """Copy an nvinfer config and set its model-engine-file entry."""
+    source = Path(config_path)
+    lines = source.read_text(encoding="utf-8").splitlines()
+    output = []
+    replaced = False
+    in_property = False
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            in_property = stripped == "[property]"
+        if in_property and stripped.startswith("model-engine-file="):
+            output.append(f"model-engine-file={engine_path}")
+            replaced = True
+        else:
+            output.append(line)
+
+    if not replaced:
+        insert_at = 0
+        for idx, line in enumerate(output):
+            if line.strip() == "[property]":
+                insert_at = idx + 1
+                break
+        output.insert(insert_at, f"model-engine-file={engine_path}")
+
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".txt", prefix="carspeed-nvinfer-", delete=False, encoding="utf-8"
+    ) as fh:
+        fh.write("\n".join(output) + "\n")
+        return fh.name
+
+
 def main(argv: Optional[Iterable[str]] = None) -> None:
     """Parse arguments and run the pipeline."""
     parser = build_arg_parser()
@@ -51,18 +118,21 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         w, h = args.resize.split("x", 1)
         width, height = int(w), int(h)
 
+    config = write_engine_config(args.config, args.engine)
+    homography = None if args.homography is None else load_homography(args.homography)
+
     from gi.repository import Gst  # imported after argument parsing
     from .pipeline.config import PipelineOptions
     from .pipeline.deepstream_graph import build_pipeline
 
     opts = PipelineOptions(
         uri=args.rtsp if args.rtsp else args.video,
-        config=args.config,
+        config=config,
         engine=args.engine,
         db=args.db,
         ppm=args.ppm,
         is_rtsp=args.rtsp is not None,
-        homography=None if args.homography is None else args.homography,
+        homography=homography,
         window=args.window,
         batch_size=args.batch_size,
         width=width,
